@@ -37,39 +37,39 @@ class HeaderCmsController extends Controller
 
     public function updateLogo(UpdateLogoRequest $request, Cms $headerLogo): JsonResponse
     {
-        if ($headerLogo->type !== 'Header Logo') {
+        if ($headerLogo->type !== 'Header Logo' || $headerLogo?->page != 'Header') {
             return response()->json([
                 'status' => false,
                 'message' => 'Logo not found'
             ], 404);
         }
 
-        if (!$request->hasFile('logo')) {
-            return response()->json([
-                'status' => false,
-                'message' => 'No logo file provided'
-            ], 400);
-        }
+        // if (!$request->hasFile('logo')) {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => 'No logo file provided'
+        //     ], 400);
+        // }
 
         try {
             DB::beginTransaction();
 
-            // Get uploaded file
-            $file = $request->file('logo');
+            // // Get uploaded file
+            // $file = $request->file('logo');
 
-            // Create a unique filename
-            $filename = time() . '.' . $file->getClientOriginalExtension();
+            // // Create a unique filename
+            // $filename = time() . '.' . $file->getClientOriginalExtension();
 
-            // Move file to public/images/header_logos
-            $destinationPath = public_path('images/header_logos');
-            $file->move($destinationPath, $filename);
+            // // Move file to public/images/header_logos
+            // $destinationPath = public_path('images/header_logos');
+            // $file->move($destinationPath, $filename);
 
-            // Full public URL
-            $publicUrl = asset('images/header_logos/' . $filename);
+            // // Full public URL
+            // $publicUrl = asset('images/header_logos/' . $filename);
 
             // Update logo meta
             $logoMeta = $headerLogo->metas()->where('meta_key', 'logo')->firstOrFail();
-            $logoMeta->update(['meta_value' => $publicUrl]);
+            $logoMeta->update(['meta_value' => $request->input('logo')]);
 
             DB::commit();
 
@@ -91,7 +91,7 @@ class HeaderCmsController extends Controller
     public function headerNavigationsList(Cms $headerNavigation)
     {
         try {
-            if ($headerNavigation->type !== 'Header Navigation') {
+            if ($headerNavigation->type !== 'Header Navigation' || $headerNavigation?->page != 'Header') {
                 return response()->json([
                     'status' => false,
                     'message' => 'Header navigation not found'
@@ -114,7 +114,7 @@ class HeaderCmsController extends Controller
     public function getHeaderNavigation(CmsMeta $navigation)
     {
         try {
-            if ($navigation->meta_key !== 'navigation') {
+            if ($navigation->meta_key != 'navigation' || $navigation?->cms?->page != 'Header') {
                 return response()->json([
                     'status' => false,
                     'message' => 'Header navigation not found'

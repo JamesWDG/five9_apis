@@ -9,7 +9,6 @@ use App\Models\Cms;
 use App\Models\CmsMeta;
 use Exception;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class FooterCmsSectionController extends Controller
@@ -35,67 +34,67 @@ class FooterCmsSectionController extends Controller
     function getFooterSection(Cms $section): JsonResponse
     {
         try {
-            if ($section->type != 'Footer Section') {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Footer Section not found'
-                ], 404);
-            }
-            $cards = [];
-            $meta = $section->metas->where('meta_key', 'crud')->where('meta_value', 'cards')->first();
-            $values = $meta->cmsMetaValues->values();
-            $temp = null;
+            if ($section->type == 'Footer Section' && $section->page == 'footer') {
+                $cards = [];
+                $meta = $section->metas->where('meta_key', 'crud')->where('meta_value', 'cards')->first();
+                $values = $meta->cmsMetaValues->values();
+                $temp = null;
 
-            foreach ($values as $item) {
+                foreach ($values as $item) {
 
-                // 🟢 new card start
-                if ($item->key === '#title') {
+                    // 🟢 new card start
+                    if ($item->key === '#title') {
 
-                    // previous card complete → push
+                        // previous card complete → push
+                        if ($temp) {
+                            $cards[] = $temp;
+                        }
+
+                        $temp = [
+                            'title' => $item->value,
+                            'info_1' => null,
+                            'info_2' => null,
+                        ];
+
+                        continue;
+                    }
+
+                    // 🟢 fill current card fields
                     if ($temp) {
-                        $cards[] = $temp;
+                        if ($item->key === 'info_1') {
+                            $temp['info_1'] = $item->value;
+                        }
+
+                        if ($item->key === 'info_2') {
+                            $temp['info_2'] = $item->value;
+                        }
                     }
-
-                    $temp = [
-                        'title' => $item->value,
-                        'info_1' => null,
-                        'info_2' => null,
-                    ];
-
-                    continue;
                 }
 
-                // 🟢 fill current card fields
+                // 🟢 last card push
                 if ($temp) {
-                    if ($item->key === 'info_1') {
-                        $temp['info_1'] = $item->value;
-                    }
-
-                    if ($item->key === 'info_2') {
-                        $temp['info_2'] = $item->value;
-                    }
+                    $cards[] = $temp;
                 }
+
+                // crud meta se raw values hata do
+                $meta->setRelation('cmsMetaValues', collect());
+
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Testimonials Section retrieved successfully',
+                    'data' => [
+                        'id'    => $section->id,
+                        'type'  => $section->type,
+                        'page'  => $section->page,
+                        'metas' => $section->metas->where('meta_key', '!=', 'crud')->values(),
+                        'cards' => $cards
+                    ]
+                ], 200);
             }
-
-            // 🟢 last card push
-            if ($temp) {
-                $cards[] = $temp;
-            }
-
-            // crud meta se raw values hata do
-            $meta->setRelation('cmsMetaValues', collect());
-
             return response()->json([
-                'status' => true,
-                'message' => 'Testimonials Section retrieved successfully',
-                'data' => [
-                    'id'    => $section->id,
-                    'type'  => $section->type,
-                    'page'  => $section->page,
-                    'metas' => $section->metas->where('meta_key', '!=', 'crud')->values(),
-                    'cards' => $cards
-                ]
-            ], 200);
+                'status' => false,
+                'message' => 'Footer Section not found'
+            ], 404);
         } catch (Exception $e) {
             return response()->json([
                 'status' => false,
@@ -107,40 +106,39 @@ class FooterCmsSectionController extends Controller
     public function updateFooterSection(UpdateFooterSectionRequest $request, Cms $section): JsonResponse
     {
         try {
-            if ($section->type !== 'Footer Section') {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Footer Section not found'
-                ], 404);
-            }
+            if ($section->type == 'Footer Section' && $section->page == 'footer') {
+                DB::transaction(function () use ($request, $section) {
 
-            DB::transaction(function () use ($request, $section) {
+                    // 🔴 delete old metas (cascade handles values)
+                    $section->metas()->delete();
 
-                // 🔴 delete old metas (cascade handles values)
-                $section->metas()->delete();
+                    // 🔵 recreate metas
+                    $metas = collect($request->sanitizedMeta())
+                        ->map(fn($m) => $section->metas()->create($m));
+                    $crudMeta = $metas->firstWhere('meta_key', 'crud');
 
-                // 🔵 recreate metas
-                $metas = collect($request->sanitizedMeta())
-                    ->map(fn($m) => $section->metas()->create($m));
-                $crudMeta = $metas->firstWhere('meta_key', 'crud');
+                    // 🔵 create cards values
+                    foreach ($request->sanitizedCards() as $card) {
+                        foreach ($card as $key => $value) {
 
-                // 🔵 create cards values
-                foreach ($request->sanitizedCards() as $card) {
-                    foreach ($card as $key => $value) {
-
-                        $crudMeta->cmsMetaValues()->create([
-                            'key' => $key,
-                            'value' => $value
-                        ]);
+                            $crudMeta->cmsMetaValues()->create([
+                                'key' => $key,
+                                'value' => $value
+                            ]);
+                        }
                     }
-                }
-            });
+                });
 
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Footer Section updated successfully',
+                    'data' => $section->fresh()->load('metas.cmsMetaValues')
+                ], 200);
+            }
             return response()->json([
-                'status' => true,
-                'message' => 'Footer Section updated successfully',
-                'data' => $section->fresh()->load('metas.cmsMetaValues')
-            ], 200);
+                'status' => false,
+                'message' => 'Footer Section not found'
+            ], 404);
         } catch (Exception $e) {
             return response()->json([
                 'status' => false,
@@ -152,18 +150,18 @@ class FooterCmsSectionController extends Controller
     function getFooterNavigationSectionList(Cms $section): JsonResponse
     {
         try {
-            if ($section->type !== 'Footer Navigation') {
+            if ($section->type == 'Footer Navigation' && $section->page == 'footer') {
+                $section = $section->load('metas');
                 return response()->json([
-                    'status' => false,
-                    'message' => 'Footer Navigation not found'
-                ], 404);
+                    'status' => true,
+                    'message' => 'Footer Navigation list retrieved successfully',
+                    'data' => $section,
+                ], 200);
             }
-            $section = $section->load('metas');
             return response()->json([
-                'status' => true,
-                'message' => 'Footer Navigation list retrieved successfully',
-                'data' => $section,
-            ], 200);
+                'status' => false,
+                'message' => 'Footer Navigation not found'
+            ], 404);
         } catch (Exception $e) {
             return response()->json([
                 'status' => false,
@@ -175,7 +173,7 @@ class FooterCmsSectionController extends Controller
     public function getFooterNavigation(CmsMeta $navigation)
     {
         try {
-            if ($navigation->meta_key !== 'navigation') {
+            if ($navigation?->meta_key != 'navigation' || $navigation?->cms?->page != 'footer') {
                 return response()->json([
                     'status' => false,
                     'message' => 'Footer navigation not found'

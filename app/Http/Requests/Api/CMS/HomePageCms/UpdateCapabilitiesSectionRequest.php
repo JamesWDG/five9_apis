@@ -24,9 +24,9 @@ class UpdateCapabilitiesSectionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'heading_1' => 'required|string',
-            'heading_2' => 'required|string',
-            'heading_3' => 'required|string',
+            // 'heading_1' => 'required|string',
+            // 'heading_2' => 'required|string',
+            // 'heading_3' => 'required|string',
             'sub_heading' => 'nullable|string',
             'para' => 'nullable|string',
             'box_heading' => 'required|array',
@@ -80,18 +80,18 @@ class UpdateCapabilitiesSectionRequest extends FormRequest
     function sanitizedMeta(): array
     {
         return [
-            [
-                'meta_key' => 'heading_1',
-                'meta_value' => $this->input('heading_1'),
-            ],
-            [
-                'meta_key' => 'heading_2',
-                'meta_value' => $this->input('heading_2'),
-            ],
-            [
-                'meta_key' => 'heading_3',
-                'meta_value' => $this->input('heading_3'),
-            ],
+            // [
+            //     'meta_key' => 'heading_1',
+            //     'meta_value' => $this->input('heading_1'),
+            // ],
+            // [
+            //     'meta_key' => 'heading_2',
+            //     'meta_value' => $this->input('heading_2'),
+            // ],
+            // [
+            //     'meta_key' => 'heading_3',
+            //     'meta_value' => $this->input('heading_3'),
+            // ],
             [
                 'meta_key' => 'sub_heading',
                 'meta_value' => $this->input('sub_heading') ?? '',
